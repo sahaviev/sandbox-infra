@@ -1,0 +1,16 @@
+services:
+  qdrant-sandbox-service:
+    image: qdrant/qdrant:latest
+    container_name: qdrant-sandbox-container
+    environment:
+      QDRANT_LOG_LEVEL: ${QDRANT_LOG_LEVEL}
+      QDRANT_API_DEFAULT_PORT: ${QDRANT_API_DEFAULT_PORT}
+    ports:
+      - ${QDRANT_API_DEFAULT_PORT}:${QDRANT_API_DEFAULT_PORT}
+    volumes:
+      - qdrant-sandbox-volume:/qdrant/storage
+    restart: always
+
+volumes:
+  qdrant-sandbox-volume:
+    driver: local

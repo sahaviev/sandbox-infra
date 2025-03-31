@@ -1,0 +1,18 @@
+{
+  "name": "sandbox",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "zitadel:start": "docker compose --file \"./zitadel-docker-compose.yml\" --env-file \"./zitadel-docker-compose.env\" --project-name \"zitadel\" up -d",
+    "zitadel:stop": "docker compose --file \"./zitadel-docker-compose.yml\" --env-file \"./zitadel-docker-compose.env\" --project-name \"zitadel\" up -d",
+    "qdrant:start": "docker compose --file \"./qdrant-docker-compose.yml\" --env-file \"./qdrant-docker-compose.env\" --project-name \"recruitment-tool-qdrant\" up -d",
+    "qdrant:stop": "docker compose --file \"./qdrant-docker-compose.yml\" --env-file \"./qdrant-docker-compose.env\" --project-name \"recruitment-tool-qdrant\" down",
+    "postgres:start": "docker compose --file \"./postgres-docker-compose.yml\" --env-file \"./postgres-docker-compose.env\" --project-name \"recruitment-tool-postgres\" up -d",
+    "postgres:stop": "docker compose --file \"./postgres-docker-compose.yml\"  --env-file \"./postgres-docker-compose.env\" --project-name \"recruitment-tool-postgres\" down"
+  },
+  "keywords": [],
+  "author": "Rail Sakhaviev",
+  "license": "ISC",
+  "packageManager": "pnpm@10.6.2"
+}

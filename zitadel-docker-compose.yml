@@ -1,0 +1,43 @@
+services:
+  zitadel:
+    restart: 'always'
+    networks:
+      - 'zitadel'
+    image: 'ghcr.io/zitadel/zitadel:latest'
+    command: 'start-from-init --masterkey "MasterkeyNeedsToHave32Characters" --tlsMode disabled'
+    environment:
+      ZITADEL_DATABASE_POSTGRES_HOST: ${ZITADEL_DATABASE_POSTGRES_HOST}
+      ZITADEL_DATABASE_POSTGRES_PORT: ${ZITADEL_DATABASE_POSTGRES_PORT}
+      ZITADEL_DATABASE_POSTGRES_DATABASE: ${ZITADEL_DATABASE_POSTGRES_DATABASE}
+      ZITADEL_DATABASE_POSTGRES_USER_USERNAME: ${ZITADEL_DATABASE_POSTGRES_USER_USERNAME}
+      ZITADEL_DATABASE_POSTGRES_USER_PASSWORD: ${ZITADEL_DATABASE_POSTGRES_USER_PASSWORD}
+      ZITADEL_DATABASE_POSTGRES_USER_SSL_MODE: ${ZITADEL_DATABASE_POSTGRES_USER_SSL_MODE}
+      ZITADEL_DATABASE_POSTGRES_ADMIN_USERNAME: ${ZITADEL_DATABASE_POSTGRES_ADMIN_USERNAME}
+      ZITADEL_DATABASE_POSTGRES_ADMIN_PASSWORD: ${ZITADEL_DATABASE_POSTGRES_ADMIN_PASSWORD}
+      ZITADEL_DATABASE_POSTGRES_ADMIN_SSL_MODE: ${ZITADEL_DATABASE_POSTGRES_ADMIN_SSL_MODE}
+      ZITADEL_EXTERNALSECURE: ${ZITADEL_EXTERNALSECURE}
+    depends_on:
+      db:
+        condition: 'service_healthy'
+    ports:
+      - '8080:8080'
+
+  db:
+    restart: 'always'
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
+    networks:
+      - 'zitadel'
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready", "-d", "zitadel", "-U", "postgres"]
+      interval: '10s'
+      timeout: '30s'
+      retries: 5
+      start_period: '20s'
+
+networks:
+  zitadel:
+
