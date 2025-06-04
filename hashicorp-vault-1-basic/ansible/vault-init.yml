@@ -1,0 +1,35 @@
+---
+- name: Initialize Vault if not already initialized
+  hosts: localhost
+  gather_facts: no
+  vars:
+    namespace: vault-namespace
+    vault_pod: vault-0
+    vault_init_file: "./vault-init.json"
+
+  tasks:
+    - name: Check if Vault is already initialized
+      command: kubectl exec -n {{ namespace }} {{ vault_pod }} -- vault status -format=json
+      register: vault_status
+      changed_when: false
+      failed_when: false
+
+    - name: Parse Vault status JSON
+      set_fact:
+        vault_initialized: "{{ (vault_status.stdout | from_json).initialized | default(false) }}"
+
+    - name: Initialize Vault (if not initialized)
+      command: kubectl exec -n {{ namespace }} {{ vault_pod }} -- vault operator init -format=json
+      register: vault_init_output
+      when: not vault_initialized
+
+    - name: Save Vault init output to file
+      copy:
+        content: "{{ vault_init_output.stdout }}"
+        dest: "{{ vault_init_file }}"
+      when: not vault_initialized
+
+    - name: Print status
+      debug:
+        msg: >
+          Vault is already initialized: {{ vault_initialized }}

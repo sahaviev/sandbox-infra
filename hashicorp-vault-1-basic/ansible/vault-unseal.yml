@@ -1,0 +1,15 @@
+---
+- name: Unseal Vault
+  hosts: localhost
+  gather_facts: no
+  vars:
+    namespace: vault-namespace
+    vault_pod: vault-0
+    vault_init_file: "./vault-init.json"
+    unseal_keys: "{{ lookup('file', vault_init_file) | from_json | json_query('unseal_keys_b64') }}"
+
+  tasks:
+    - name: Unseal Vault (with 3 keys)
+      command: >
+        kubectl exec -n {{ namespace }} {{ vault_pod }} -- vault operator unseal {{ item }}
+      loop: "{{ unseal_keys[:3] }}"
