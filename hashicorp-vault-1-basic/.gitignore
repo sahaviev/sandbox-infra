@@ -1,0 +1,2 @@
+# ignore generated keys
+ansible/vault-init.json
