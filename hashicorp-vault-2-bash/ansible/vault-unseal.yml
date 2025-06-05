@@ -1,0 +1,139 @@
+---
+- name: Unseal Vault pod
+  hosts: localhost
+  gather_facts: no
+  vars:
+    # Default values (can be overridden with -e)
+    namespace: "{{ namespace | default('vault-namespace') }}"
+    vault_pod: "{{ vault_pod | default('vault-0') }}"
+    data_dir: "{{ data_dir | default('./data') }}"
+    vault_init_file: "{{ data_dir }}/vault-init.json"
+
+  tasks:
+    - name: Check if Vault init file exists
+      stat:
+        path: "{{ vault_init_file }}"
+      register: init_file_stat
+
+    - name: Fail if init file doesn't exist
+      fail:
+        msg: |
+          Vault init file not found at {{ vault_init_file }}
+          Please run vault initialization first!
+      when: not init_file_stat.stat.exists
+
+    - name: Read Vault init file
+      slurp:
+        src: "{{ vault_init_file }}"
+      register: vault_init_content
+
+    - name: Parse unseal keys from init file
+      set_fact:
+        unseal_keys: "{{ (vault_init_content.content | b64decode | from_json).unseal_keys_b64 }}"
+
+    - name: Debug - Show unseal keys (first few characters only)
+      debug:
+        msg: |
+          Found {{ unseal_keys | length }} unseal keys
+          First key starts with: {{ unseal_keys[0][:8] }}...
+          Second key starts with: {{ unseal_keys[1][:8] }}...
+          Third key starts with: {{ unseal_keys[2][:8] }}...
+      when: unseal_keys | length >= 3
+
+    - name: Wait for pod to be ready
+      command: kubectl wait --for=condition=ready pod/{{ vault_pod }} -n {{ namespace }} --timeout=60s
+      register: pod_wait_result
+      failed_when: false
+
+    - name: Check current Vault seal status
+      command: kubectl exec -n {{ namespace }} {{ vault_pod }} -- vault status -format=json
+      register: vault_status_before
+      changed_when: false
+      failed_when: false
+      retries: 3
+      delay: 5
+
+    - name: Parse current seal status
+      set_fact:
+        vault_sealed: "{{ (vault_status_before.stdout | from_json).sealed | default(true) }}"
+        vault_initialized: "{{ (vault_status_before.stdout | from_json).initialized | default(false) }}"
+      when:
+        - vault_status_before.stdout is defined
+        - vault_status_before.stdout != ""
+
+    - name: Display current status
+      debug:
+        msg: |
+          Pod {{ vault_pod }} status:
+          - Pod ready: {{ pod_wait_result.rc == 0 }}
+          - Vault initialized: {{ vault_initialized | default('unknown') }}
+          - Sealed: {{ vault_sealed | default('unknown') }}
+          - Available unseal keys: {{ unseal_keys | length }}
+
+    - name: Skip unsealing if pod not ready
+      debug:
+        msg: "Pod {{ vault_pod }} is not ready yet. Skipping..."
+      when:
+        - pod_wait_result.rc != 0
+
+    - name: Skip unsealing if Vault not initialized
+      debug:
+        msg: "Pod {{ vault_pod }} Vault is not initialized. Run vault-init.yml first."
+      when:
+        - vault_initialized is defined
+        - not vault_initialized
+
+    - name: Skip unsealing if already unsealed
+      debug:
+        msg: "Pod {{ vault_pod }} is already unsealed. Skipping..."
+      when:
+        - vault_sealed is defined
+        - not vault_sealed
+
+    - name: Unseal Vault with first 3 keys
+      command: kubectl exec -n {{ namespace }} {{ vault_pod }} -- vault operator unseal {{ item }}
+      loop: "{{ unseal_keys[:3] }}"
+      register: unseal_results
+      when:
+        - pod_wait_result.rc == 0
+        - vault_initialized is defined and vault_initialized
+        - vault_sealed is defined and vault_sealed
+      failed_when: false
+
+    - name: Check final seal status
+      command: kubectl exec -n {{ namespace }} {{ vault_pod }} -- vault status -format=json
+      register: vault_status_after
+      changed_when: false
+      failed_when: false
+
+    - name: Parse final seal status
+      set_fact:
+        vault_unsealed: "{{ not (vault_status_after.stdout | from_json).sealed }}"
+      when:
+        - vault_status_after.stdout is defined
+        - vault_status_after.stdout != ""
+
+    - name: Display unseal results
+      debug:
+        msg: |
+          Unseal operation completed for {{ vault_pod }}:
+          - Final status: {{ 'UNSEALED' if vault_unsealed else 'SEALED' }}
+          - Pod ready: {{ vault_status_after.rc == 0 or vault_status_after.rc == 2 }}
+      when:
+        - vault_status_after.stdout is defined
+
+    - name: Handle unseal failure
+      debug:
+        msg: |
+          ⚠️  Warning: {{ vault_pod }} may still be starting up or has issues
+          - Try running the playbook again in a few seconds
+          - Check pod logs: kubectl logs -n {{ namespace }} {{ vault_pod }}
+      when:
+        - vault_status_after.stdout is not defined or vault_status_after.stdout == ""
+
+    - name: Success message
+      debug:
+        msg: "🎉 Pod {{ vault_pod }} successfully unsealed!"
+      when:
+        - vault_unsealed is defined
+        - vault_unsealed

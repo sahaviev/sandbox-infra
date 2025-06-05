@@ -1,0 +1,78 @@
+---
+- name: Initialize Vault if not already initialized
+  hosts: localhost
+  gather_facts: no
+  vars:
+    # Default values (can be overridden with -e)
+    namespace: "{{ namespace | default('vault-namespace') }}"
+    vault_pod: "{{ vault_pod | default('vault-0') }}"
+    data_dir: "{{ data_dir | default('./data') }}"
+    vault_init_file: "{{ data_dir }}/vault-init.json"
+
+  tasks:
+    - name: Ensure data directory exists
+      file:
+        path: "{{ data_dir }}"
+        state: directory
+        mode: '0700'
+
+    - name: Check if Vault init file already exists
+      stat:
+        path: "{{ vault_init_file }}"
+      register: init_file_stat
+
+    - name: Skip initialization if init file exists
+      debug:
+        msg: "Vault init file already exists at {{ vault_init_file }}. Skipping initialization."
+      when: init_file_stat.stat.exists
+
+    - name: Check if Vault is already initialized (if no init file)
+      command: kubectl exec -n {{ namespace }} {{ vault_pod }} -- vault status -format=json
+      register: vault_status
+      changed_when: false
+      failed_when: false
+      when: not init_file_stat.stat.exists
+
+    - name: Parse Vault status JSON
+      set_fact:
+        vault_initialized: "{{ (vault_status.stdout | from_json).initialized | default(false) }}"
+      when: not init_file_stat.stat.exists
+
+    - name: Initialize Vault (if not initialized and no init file)
+      command: kubectl exec -n {{ namespace }} {{ vault_pod }} -- vault operator init -format=json
+      register: vault_init_output
+      when:
+        - not init_file_stat.stat.exists
+        - not vault_initialized
+
+    - name: Save Vault init output to file
+      copy:
+        content: "{{ vault_init_output.stdout }}"
+        dest: "{{ vault_init_file }}"
+        mode: '0600'
+      when:
+        - not init_file_stat.stat.exists
+        - not vault_initialized
+        - vault_init_output is defined
+
+    - name: Display initialization status
+      debug:
+        msg: |
+          Vault initialization status:
+          - Namespace: {{ namespace }}
+          - Pod: {{ vault_pod }}
+          - Init file exists: {{ init_file_stat.stat.exists }}
+          - Vault initialized: {{ vault_initialized | default('N/A') }}
+          - Init file location: {{ vault_init_file }}
+
+    - name: Security reminder
+      debug:
+        msg: |
+          🔐 SECURITY REMINDER:
+          - Unseal keys and root token are stored in {{ vault_init_file }}
+          - This file contains sensitive information!
+          - For production, use secure storage (AWS Secrets Manager, etc.)
+          - Never commit this file to version control
+      when:
+        - not init_file_stat.stat.exists
+        - vault_init_output is defined

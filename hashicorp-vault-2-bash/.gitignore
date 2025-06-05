@@ -1,0 +1,4 @@
+# ignore generated keys
+data/vault-init.json
+# ignore log files
+logs/
