@@ -114,6 +114,7 @@ server:
   ingress:
     enabled: ${ingress_enabled}
     ingressClassName: nginx
+    activeService: false
     hosts:
       - host: "${ingress_hostname}"
         paths: ["/"]

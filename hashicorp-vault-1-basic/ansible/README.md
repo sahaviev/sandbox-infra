@@ -1,6 +1,6 @@
 # Vault Ansible Basic Playbooks
 
-This repository contains [Ansible](https://www.ansible.com/) playbooks for managing HashiCorp Vault in Kubernetes.
+This directory contains [Ansible](https://www.ansible.com/) playbooks for managing HashiCorp Vault in Kubernetes.
 
 ## Playbooks
 
@@ -39,7 +39,8 @@ Default configuration:
 - Kubernetes cluster with Vault deployed
 - `kubectl` configured and accessible
 - Ansible installed
-
+- Vault pods must be running and ready
+- 
 ## Important Notes
 
 ⚠️ **Hardcoded Configuration:** These playbooks are currently hardcoded to work with `vault-0` pod only. For a full Vault cluster setup:

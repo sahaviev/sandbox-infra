@@ -78,9 +78,9 @@ output "terraform_values_example" {
     namespace = "vault"
     vault_chart_version = "0.27.0"
     vault_image_tag = "1.15.2"
-    storage_class = "gp2"  # or your preferred storage class
-    storage_size = "20Gi"
+    storage_class = "storage"  # or your preferred storage class
+    storage_size = "10Gi"
     ingress_enabled = true
-    ingress_hostname = "vault.yourdomain.com"
+    ingress_hostname = "vault.local"
   EOT
 }

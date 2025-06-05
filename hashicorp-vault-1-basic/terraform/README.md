@@ -7,7 +7,6 @@
 - 🚀 Deploys Vault cluster using official HashiCorp Helm chart
 - 🔧 Configurable storage, ingress, and cluster settings
 - 📊 Comprehensive outputs with management commands
-- 🎯 Production-ready defaults
 
 ## Usage
 
@@ -18,10 +17,10 @@ module "vault" {
   namespace           = "vault"
   vault_chart_version = "0.27.0"
   vault_image_tag     = "1.15.2"
-  storage_size        = "20Gi"
-  storage_class       = "gp2"
+  storage_size        = "10Gi"
+  storage_class       = "standard"
   ingress_enabled     = true
-  ingress_hostname    = "vault.yourdomain.com"
+  ingress_hostname    = "vault.local"
 }
 ```
 
@@ -103,4 +102,4 @@ vault-terraform/
 
 ## License
 
-MIT License - see [LICENSE](LICENSE) file for details.
+MIT License - see [LICENSE](../../LICENSE.md) file for details.
