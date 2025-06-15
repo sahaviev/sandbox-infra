@@ -1,0 +1,38 @@
+configs:
+  params:
+    server.insecure: false
+
+server:
+  ingress:
+    enabled: ${ingress_enabled}
+    ingressClassName: nginx
+    annotations:
+      kubernetes.io/ingress.class: nginx
+      cert-manager.io/cluster-issuer: "ca-cluster-issuer"
+      nginx.ingress.kubernetes.io/backend-protocol: "HTTPS"
+      nginx.ingress.kubernetes.io/ssl-redirect: "true"
+    hosts:
+      - ${ingress_hostname}
+    tls:
+      - hosts:
+          - ${ingress_hostname}
+        secretName: argocd-server-tls
+  service:
+    type: ClusterIP
+    ports:
+      https: 443
+
+controller:
+  replicas: 1
+
+repoServer:
+  replicas: 1
+
+applicationSet:
+  replicas: 1
+
+dex:
+  enabled: false
+
+redis:
+  enabled: true
